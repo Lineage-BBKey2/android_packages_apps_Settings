@@ -18,11 +18,13 @@ package com.android.settings.accessibility;
 
 import android.content.Context;
 import android.content.res.Resources;
+import android.provider.Settings;
 
 import com.android.settingslib.display.DisplayDensityUtils;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.stream.Collectors;
 
 /**
@@ -46,17 +48,28 @@ class DisplaySizeData extends PreviewSizeData<Integer> {
             setInitialIndex(0);
             setValues(Collections.singletonList(densityDpi));
         } else {
-            setDefaultValue(mDensity.getDefaultDensity());
+            final int physicalDefaultDensity = mDensity.getDefaultDensity();
+            final List<Integer> values = Arrays.stream(mDensity.getValues())
+                    .boxed()
+                    .collect(Collectors.toList());
+
+            final int configuredDefaultDensity = Settings.Secure.getInt(
+                    getContext().getContentResolver(),
+                    Settings.Secure.DEFAULT_DEVICE_DISPLAY_DENSITY,
+                    physicalDefaultDensity);
+
             setInitialIndex(initialIndex);
-            setValues(Arrays.stream(mDensity.getValues()).boxed()
-                    .collect(Collectors.toList()));
+            setValues(values);
+            setDefaultValue(values.contains(configuredDefaultDensity)
+                    ? configuredDefaultDensity
+                    : physicalDefaultDensity);
         }
     }
 
     @Override
     void commit(int currentProgress) {
         final int densityDpi = getValues().get(currentProgress);
-        if (densityDpi == getDefaultValue()) {
+        if (densityDpi == mDensity.getDefaultDensity()) {
             mDensity.clearForcedDisplayDensity();
         } else {
             mDensity.setForcedDisplayDensity(currentProgress);
