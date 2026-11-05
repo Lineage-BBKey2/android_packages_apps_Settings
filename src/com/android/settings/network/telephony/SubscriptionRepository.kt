@@ -48,12 +48,22 @@ class SubscriptionRepository(private val context: Context) {
     private val subscriptionManager = context.requireSubscriptionManager()
 
     /** A cold flow of a list of subscriptions that are available and visible to the user. */
-    fun selectableSubscriptionInfoListFlow(): Flow<List<SubscriptionInfo>> =
-        context
+    fun selectableSubscriptionInfoListFlow(): Flow<List<SubscriptionInfo>> {
+        val updates = context
             .subscriptionsChangedFlow()
             .map { getSelectableSubscriptionInfoList() }
+        val displayUpdates = if (LegacySimPowerController.isSupported(context)) {
+            updates.keepLegacySimRowsWhileChanging(
+                isChanging = { LegacySimPowerController.get(context).isInUiTransition },
+                subscriptionId = { it.subscriptionId },
+            )
+        } else {
+            updates
+        }
+        return displayUpdates
             .conflate()
             .flowOn(Dispatchers.Default)
+    }
 
     /**
      * Return a list of subscriptions that are available and visible to the user.
@@ -124,6 +134,7 @@ class SubscriptionRepository(private val context: Context) {
                 !LegacySimPowerController.isDisabled(context, subId) &&
                     subscriptionManager.isSubscriptionEnabled(subId)
             }
+            .distinctUntilChanged()
             .conflate()
             .onEach { Log.d(TAG, "[$subId] isSubscriptionEnabledFlow: $it") }
             .flowOn(Dispatchers.Default)

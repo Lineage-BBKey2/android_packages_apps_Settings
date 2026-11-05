@@ -852,4 +852,6 @@
     <bool name="config_enable_legacy_sim_power_toggle" translatable="false">false</bool>
     <!-- Recovery helper refuses to reactivate the earlier SIM-state integration. -->
     <integer name="config_legacy_sim_power_state_version">2</integer>
+    <!-- Identifies the Settings-only SIM power presentation update. -->
+    <integer name="config_legacy_sim_power_ui_version">1</integer>
 </resources>

@@ -17,11 +17,13 @@
 package com.android.settings.network.telephony
 
 import android.content.Context
+import android.os.SystemProperties
 import android.provider.Settings
 import android.telephony.SubscriptionManager
 import android.telephony.TelephonyManager
 import android.telephony.TelephonyManager.MobileDataPolicy
 import android.util.Log
+import com.android.internal.telephony.GlobalSettingsHelper
 import com.android.settings.wifi.WifiPickerTrackerHelper
 import com.android.settingslib.spaprivileged.settingsprovider.settingsGlobalChangeFlow
 import kotlinx.coroutines.Dispatchers
@@ -98,6 +100,38 @@ class MobileDataRepository(
             .distinctUntilChanged()
             .conflate()
             .onEach { Log.d(TAG, "[$subId] isMobileDataEnabledFlow: $it") }
+            .flowOn(Dispatchers.Default)
+    }
+
+    /** Read the user's choice even while the powered-up SIM has no usable phone binding yet. */
+    fun getMobileDataEnabledForUi(subId: Int): Boolean? {
+        if (!SubscriptionManager.isValidSubscriptionId(subId)) return null
+        if (LegacySimPowerController.isSupported(context) &&
+            Settings.Global.getInt(context.contentResolver, Settings.Global.DEVICE_PROVISIONED, 0) != 0
+        ) {
+            // Match DataSettingsManager's user preference and default, without requiring
+            // the restored subscription to have a usable phone binding first.
+            return GlobalSettingsHelper.getBoolean(
+                context, Settings.Global.MOBILE_DATA, subId,
+                SystemProperties.getBoolean("ro.com.android.mobiledata", true),
+            )
+        }
+        return try {
+            context.telephonyManager(subId)
+                .isDataEnabledForReason(TelephonyManager.DATA_ENABLED_REASON_USER)
+        } catch (_: RuntimeException) {
+            null // Unknown is not the same as a user-selected OFF value.
+        }
+    }
+
+    fun isMobileDataEnabledForUiFlow(subId: Int): Flow<Boolean?> {
+        if (!LegacySimPowerController.isSupported(context)) {
+            return isMobileDataEnabledFlow(subId).map { it }
+        }
+        return merge(mobileDataEnabledChangedFlow(subId), subscriptionsChangedFlow)
+            .map { getMobileDataEnabledForUi(subId) }
+            .distinctUntilChanged()
+            .conflate()
             .flowOn(Dispatchers.Default)
     }
 

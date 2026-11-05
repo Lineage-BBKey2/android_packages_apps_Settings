@@ -50,6 +50,7 @@ import com.android.settings.flags.Flags
 import com.android.settings.network.SubscriptionInfoListViewModel
 import com.android.settings.network.telephony.DataSubscriptionRepository
 import com.android.settings.network.telephony.MobileDataRepository
+import com.android.settings.network.telephony.LegacySimPowerController
 import com.android.settings.network.telephony.SimRepository
 import com.android.settings.network.telephony.requireSubscriptionManager
 import com.android.settings.spa.network.PrimarySimRepository.PrimarySimInfo
@@ -138,6 +139,18 @@ open class NetworkCellularGroupProvider : SettingsPageProvider, SearchablePage {
         showMobileDataSection.value = selectableSubscriptionInfoList
                 .filter { subInfo -> subInfo.simSlotIndex > -1 }
                 .size > 0
+        val useLegacyUi = remember { LegacySimPowerController.isSupported(context) }
+        val activeSubIds = selectableSubscriptionInfoList
+            .filter { it.simSlotIndex > -1 }.map { it.subscriptionId }
+        // On single-active-SIM restoration the default-data broadcast can arrive later.
+        // Select only the displayed preference; this does not change the actual default SIM.
+        val displayedDataSubId = if (useLegacyUi &&
+            mobileDataSelectedId.intValue !in activeSubIds
+        ) {
+            activeSubIds.singleOrNull() ?: mobileDataSelectedId.intValue
+        } else {
+            mobileDataSelectedId.intValue
+        }
         val stringSims = stringResource(R.string.provider_network_settings_title)
         RegularScaffold(title = stringSims) {
             SimsSection(selectableSubscriptionInfoList)
@@ -145,6 +158,7 @@ open class NetworkCellularGroupProvider : SettingsPageProvider, SearchablePage {
                 MobileDataSectionImpl(
                     mobileDataSelectedId,
                     nonDdsRemember,
+                    displayedDataSubId,
                 )
             }
 
@@ -220,6 +234,7 @@ open class NetworkCellularGroupProvider : SettingsPageProvider, SearchablePage {
 fun MobileDataSectionImpl(
     mobileDataSelectedId: MutableIntState,
     nonDds: MutableIntState,
+    displayedDataSubId: Int = mobileDataSelectedId.intValue,
 ) {
     val context = LocalContext.current
     val localLifecycleOwner = LocalLifecycleOwner.current
@@ -233,20 +248,33 @@ fun MobileDataSectionImpl(
             )
         }.collectAsStateWithLifecycle(initialValue = null)
 
-        val mobileDataStateChanged by remember(mobileDataSelectedId.intValue) {
-            mobileDataRepository.isMobileDataEnabledFlow(mobileDataSelectedId.intValue)
-        }.collectAsStateWithLifecycle(initialValue = false)
+        val initialMobileDataState = remember(displayedDataSubId) {
+            if (LegacySimPowerController.isSupported(context)) {
+                mobileDataRepository.getMobileDataEnabledForUi(displayedDataSubId)
+            } else {
+                false
+            }
+        }
+        val mobileDataStateChanged by remember(displayedDataSubId) {
+            mobileDataRepository.isMobileDataEnabledForUiFlow(displayedDataSubId)
+        }.collectAsStateWithLifecycle(initialValue = initialMobileDataState)
         val coroutineScope = rememberCoroutineScope()
 
         MobileDataSwitchingPreference(
             isMobileDataEnabled = { mobileDataStateChanged },
+            isChangeable = {
+                !LegacySimPowerController.isSupported(context) ||
+                    (context.getSystemService(SubscriptionManager::class.java)
+                        ?.isActiveSubscriptionId(displayedDataSubId) == true &&
+                        !LegacySimPowerController.get(context).isUiBusy)
+            },
             setMobileDataEnabled = { newEnabled ->
                 coroutineScope.launch {
                     setMobileData(
                         context,
                         context.getSystemService(SubscriptionManager::class.java),
                         getWifiPickerTrackerHelper(context, localLifecycleOwner),
-                        mobileDataSelectedId.intValue,
+                        displayedDataSubId,
                         newEnabled
                     )
                 }
