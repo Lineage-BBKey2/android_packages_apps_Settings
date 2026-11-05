@@ -37,6 +37,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.shareIn
@@ -61,7 +62,7 @@ class SubscriptionRepository(private val context: Context) {
      */
     fun getSelectableSubscriptionInfoList(): List<SubscriptionInfo> {
         val availableList =
-            subscriptionManager.getAvailableSubscriptionInfoList() ?: return emptyList()
+            subscriptionManager.getAvailableSubscriptionInfoList() ?: emptyList()
         val visibleList =
             availableList.filter { subInfo ->
                 // Opportunistic subscriptions are considered invisible to users so they should
@@ -86,6 +87,7 @@ class SubscriptionRepository(private val context: Context) {
             // Matching the sorting order in
             // SubscriptionManagerService.getAvailableSubscriptionInfoList
             .sortedWith(compareBy({ it.sortableSimSlotIndex }, { it.subscriptionId }))
+            .let { LegacySimPowerController.includeDisabled(context, it) }
             .also { Log.d(TAG, "getSelectableSubscriptionInfoList: $it") }
     }
 
@@ -94,7 +96,7 @@ class SubscriptionRepository(private val context: Context) {
         return subscriptionsChangedFlow()
             .map {
                 val subInfo =
-                    subscriptionManager.availableSubscriptionInfoList?.firstOrNull { subInfo ->
+                    getSelectableSubscriptionInfoList().firstOrNull { subInfo ->
                         subInfo.subscriptionId == subId
                     }
                 subInfo != null &&
@@ -118,7 +120,10 @@ class SubscriptionRepository(private val context: Context) {
     fun isSubscriptionEnabledFlow(subId: Int): Flow<Boolean> {
         if (!SubscriptionManager.isValidSubscriptionId(subId)) return flowOf(false)
         return subscriptionsChangedFlow()
-            .map { subscriptionManager.isSubscriptionEnabled(subId) }
+            .map {
+                !LegacySimPowerController.isDisabled(context, subId) &&
+                    subscriptionManager.isSubscriptionEnabled(subId)
+            }
             .conflate()
             .onEach { Log.d(TAG, "[$subId] isSubscriptionEnabledFlow: $it") }
             .flowOn(Dispatchers.Default)
@@ -133,10 +138,17 @@ class SubscriptionRepository(private val context: Context) {
         isSubscriptionEnabledFlow(subId).collectLatestWithLifecycle(lifecycleOwner, action = action)
     }
 
-    fun canDisablePhysicalSubscription() = subscriptionManager.canDisablePhysicalSubscription()
+    fun canDisablePhysicalSubscription() =
+        subscriptionManager.canDisablePhysicalSubscription() ||
+            LegacySimPowerController.isSupported(context)
 
     /** Flow for subscriptions changes. */
-    fun subscriptionsChangedFlow() = getSharedSubscriptionsChangedFlow(context)
+    fun subscriptionsChangedFlow(): Flow<Unit> =
+        if (LegacySimPowerController.isSupported(context)) {
+            merge(getSharedSubscriptionsChangedFlow(context), legacySimPowerChanges(context))
+        } else {
+            getSharedSubscriptionsChangedFlow(context)
+        }
 
     /** Flow of active subscription ids. */
     fun activeSubscriptionIdListFlow(): Flow<List<Int>> =

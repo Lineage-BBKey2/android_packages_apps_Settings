@@ -515,7 +515,7 @@ public class MobileNetworkRepository extends SubscriptionManager.OnSubscriptions
         }
 
         return new MobileNetworkInfoEntity(String.valueOf(subId), isDataEnabled,
-                SubscriptionUtil.showToggleForPhysicalSim(mSubscriptionManager)
+                SubscriptionUtil.showToggleForPhysicalSim(mContext)
         );
     }
 

@@ -27,6 +27,7 @@ import com.android.settings.R
 import com.android.settings.flags.Flags
 import com.android.settings.network.AirplaneModePreference.Companion.isAirplaneModeOn
 import com.android.settings.network.SubscriptionUtil.getUniqueSubscriptionDisplayName
+import com.android.settings.network.telephony.LegacySimPowerController
 import com.android.settings.network.telephony.SimRepository
 import com.android.settings.network.telephony.SubscriptionRepository
 import com.android.settings.network.telephony.euicc.EuiccRepository
@@ -59,6 +60,9 @@ class MobileNetworkListScreen :
     private var airplaneModeObserver: KeyedObserver<String>? = null
     private var subscriptionInfoList: List<SubscriptionInfo>? = null
     private var onSubscriptionsChangedListener: OnSubscriptionsChangedListener? = null
+    private var legacySimPowerController: LegacySimPowerController? = null
+    private var legacySimPowerListener: Runnable? = null
+    private var legacyObserverGeneration = 0
 
     override val key: String
         get() = KEY
@@ -128,6 +132,22 @@ class MobileNetworkListScreen :
 
     override fun onCreate(context: PreferenceLifecycleContext) {
         val executor = HandlerExecutor.main
+        if (LegacySimPowerController.isSupported(context)) {
+            val generation = ++legacyObserverGeneration
+            val listener = Runnable {
+                if (legacyObserverGeneration == generation) {
+                    subscriptionInfoList = null
+                    context.notifyPreferenceChange(KEY)
+                }
+            }
+            val controller = LegacySimPowerController.get(context)
+            legacySimPowerController = controller
+            legacySimPowerListener = listener
+            controller.addListener(listener)
+            // The first asynchronous snapshot may have completed before registration.
+            subscriptionInfoList = null
+            context.notifyPreferenceChange(KEY)
+        }
         val observer = KeyedObserver<String> { _, _ -> context.notifyPreferenceChange(KEY) }
         airplaneModeObserver = observer
         SettingsGlobalStore.get(context).addObserver(AirplaneModePreference.KEY, observer, executor)
@@ -145,6 +165,11 @@ class MobileNetworkListScreen :
     }
 
     override fun onDestroy(context: PreferenceLifecycleContext) {
+        ++legacyObserverGeneration
+        legacySimPowerListener?.let { legacySimPowerController?.removeListener(it) }
+        legacySimPowerListener = null
+        legacySimPowerController = null
+        subscriptionInfoList = null
         airplaneModeObserver?.let {
             SettingsGlobalStore.get(context).removeObserver(AirplaneModePreference.KEY, it)
         }

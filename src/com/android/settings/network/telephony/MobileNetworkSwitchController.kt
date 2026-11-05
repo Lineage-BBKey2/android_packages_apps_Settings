@@ -76,6 +76,6 @@ class MobileNetworkSwitchController @JvmOverloads constructor(
             ?: return false
         // For eSIM, we always want the toggle. If telephony stack support disabling a pSIM
         // directly, we show the toggle.
-        return subInfo.isEmbedded || requireSubscriptionManager().canDisablePhysicalSubscription()
+        return subInfo.isEmbedded || subscriptionRepository.canDisablePhysicalSubscription()
     }
 }

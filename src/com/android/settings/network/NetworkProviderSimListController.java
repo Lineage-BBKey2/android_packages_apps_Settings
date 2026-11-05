@@ -31,6 +31,8 @@ import androidx.preference.PreferenceCategory;
 import androidx.preference.PreferenceScreen;
 
 import com.android.settings.R;
+import com.android.settings.network.telephony.LegacySimPowerToggleActivity;
+import com.android.settings.network.telephony.LegacySimPowerController;
 import com.android.settings.core.BasePreferenceController;
 import com.android.settings.network.telephony.MobileNetworkUtils;
 import com.android.settingslib.RestrictedPreference;
@@ -110,8 +112,12 @@ public class NetworkProviderSimListController extends BasePreferenceController i
                 pref.setEnabled(false);
             } else {
                 pref.setOnPreferenceClickListener(clickedPref -> {
+                    if (LegacySimPowerController.isDisabled(mContext, subId)) {
+                        LegacySimPowerToggleActivity.launch(mContext, subId, true);
+                        return true;
+                    }
                     if (!info.isEmbedded && !isActiveSubscriptionId
-                            && !SubscriptionUtil.showToggleForPhysicalSim(mSubscriptionManager)) {
+                            && !SubscriptionUtil.showToggleForPhysicalSim(mContext)) {
                         SubscriptionUtil.startToggleSubscriptionDialogActivity(mContext, subId,
                                 true, false);
                     } else {
@@ -128,6 +134,9 @@ public class NetworkProviderSimListController extends BasePreferenceController i
     }
 
     public CharSequence getSummary(SubscriptionInfoEntity subInfo, CharSequence displayName) {
+        String disabledSummary = LegacySimPowerController.getDisabledSummary(
+                mContext, subInfo.getSubId());
+        if (disabledSummary != null) return disabledSummary;
         if (!subInfo.isEmbedded
                 && SubscriptionUtil.isConvertedPsimSubscription(mContext, subInfo.getSubId())) {
             return mContext.getString(R.string.sim_category_converted_sim);
@@ -146,7 +155,7 @@ public class NetworkProviderSimListController extends BasePreferenceController i
             }
         } else {
             if (!subInfo.isEmbedded && !SubscriptionUtil.showToggleForPhysicalSim(
-                    mSubscriptionManager)) {
+                    mContext)) {
                 return mContext.getString(R.string.mobile_network_tap_to_activate, displayName);
             } else {
                 return mContext.getString(R.string.sim_category_inactive_sim);

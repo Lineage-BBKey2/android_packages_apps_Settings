@@ -371,7 +371,7 @@ public class MobileNetworkSettings extends AbstractMobileNetworkSettings impleme
         LifecycleOwner viewLifecycleOwner = getViewLifecycleOwner();
         new SubscriptionRepository(requireContext())
                 .collectSubscriptionVisible(mSubId, viewLifecycleOwner, (isVisible) -> {
-                    if (!isVisible) {
+                    if (!isVisible || LegacySimPowerController.isDisabled(requireContext(), mSubId)) {
                         Log.d(LOG_TAG, "Due to subscription not visible, closes page");
                         finishFragment();
                     }

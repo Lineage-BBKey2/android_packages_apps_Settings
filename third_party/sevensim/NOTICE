@@ -1,0 +1,63 @@
+7SIM legacy SIM-power backend incorporated into LineageOS Settings
+
+Upstream: https://github.com/iusmac/7SIM
+Branch: 15.0-dev
+Commit: d5f1b6de4f8d229ec8678d6d7e18431e789f8cd9
+License: GNU General Public License, version 3. See LICENSE.
+Original authorship and history: the upstream repository and its contributors.
+
+Imported implementation files:
+  telephony/TelephonyController.java
+  telephony/Subscriptions.java
+  telephony/SubscriptionsImplLegacy.java
+  telephony/Subscription.java
+  telephony/SubscriptionList.java
+  telephony/SimState.java
+  telephony/SubscriptionsDao.java
+  telephony/InvalidSubscriptionIdException.java
+  telephony/TelephonyUtils.java
+  SysProp.java
+
+Local adaptations, 2026-11-03:
+- Replace application Hilt injection with explicit LegacyBackend construction.
+  The controller, subscription iterator/state tracking, model and DAO are retained.
+- Provide a subscription-only device-protected Room database, without the
+  original scheduling or SIM-PIN tables. Logger and Utils are small Settings
+  adapters; they are not claimed to be verbatim upstream implementations.
+- Use service.settings_sevensim.* for volatile properties, preventing shared
+  property names with a separately installed 7SIM app.
+- TelephonyController reports explicit success/result codes to the Settings
+  adapter, ignores callbacks from completed request generations, and releases
+  synchronization blocking in a finally block.
+- On Android 15, an unknown response, interruption, or timeout is treated as a
+  failed transaction. A missing callback is not taken as proof of an empty SIM
+  slot. Known-success and failure compensation paths retain the upstream design.
+- The Settings adapter adds current-call/ECM/airplane/user guards, checks whether
+  power-down actually leaves READY/LOADED, retains an enable control after a
+  failed recovery, and schedules boot/airplane reconciliation. It replaces the
+  scheduling application's lifecycle integration; it is newly written code.
+- No 7SIM activities, launcher entry, scheduler, PIN storage, or foreground
+  services are included in the resulting application.
+
+UPSTREAM.json records original and ported file hashes. UPSTREAM-DIFF.patch shows
+every difference for files that have upstream counterparts, including adapters.
+The original TelephonyControllerTest and SubscriptionsImplLegacyTest are kept in
+upstream-tests/ for reference. They are not automatically compiled into Settings
+or represented as having been run in this environment. The package's validation
+directory contains the separate host regression harness and its results.
+
+Preserve this notice, the license, and source provenance when redistributing the
+incorporated code. The Soong library declares its GPL-3.0 license rather than
+inheriting Settings' default Apache license for these files.
+
+2026-11-04 state-ordering repair:
+- Do not infer ENABLED from a selectable SubscriptionInfo after the card already
+  reports ABSENT/NOT_READY, if that same subscription has an explicit disable.
+- Reconstruct an off entry from a retained slot ID and durable keep-disabled
+  preference even if the volatile state was overwritten by the earlier race.
+- Settings preference metadata now invalidates its cached list on backend-only
+  updates and detaches its observer on destruction.
+- A Room-open repair resets only old keep-disabled records whose two activation
+  timestamps were both reset to UNKNOWN/MIN by v1 synchronization. Valid explicit
+  disables with a recorded disable time are preserved. Database schema/version 1
+  is retained; completion is recorded separately in private preferences.
