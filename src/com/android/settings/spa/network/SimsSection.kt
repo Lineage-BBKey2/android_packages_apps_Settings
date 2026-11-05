@@ -28,6 +28,7 @@ import androidx.compose.material.icons.outlined.SimCardDownload
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
@@ -56,7 +57,9 @@ import kotlinx.coroutines.launch
 fun SimsSection(subscriptionInfoList: List<SubscriptionInfo>) {
     Category {
         for (subInfo in subscriptionInfoList) {
-            SimPreference(subInfo)
+            key(subInfo.subscriptionId) {
+                SimPreference(subInfo)
+            }
         }
 
         AddSim()
@@ -66,9 +69,18 @@ fun SimsSection(subscriptionInfoList: List<SubscriptionInfo>) {
 @Composable
 private fun SimPreference(subInfo: SubscriptionInfo) {
     val context = LocalContext.current
+    val initialChecked = remember(subInfo.subscriptionId) {
+        try {
+            !LegacySimPowerController.isDisabled(context, subInfo.subscriptionId) &&
+                context.getSystemService(android.telephony.SubscriptionManager::class.java)
+                    ?.isSubscriptionEnabled(subInfo.subscriptionId) == true
+        } catch (_: RuntimeException) {
+            false
+        }
+    }
     val checked = remember(subInfo.subscriptionId) {
         SubscriptionRepository(context).isSubscriptionEnabledFlow(subInfo.subscriptionId)
-    }.collectAsStateWithLifecycle(initialValue = false)
+    }.collectAsStateWithLifecycle(initialValue = initialChecked)
     val phoneNumber = phoneNumber(subInfo)
     val canDisablePhysicalSubscription by remember {
         flow {
@@ -132,9 +144,16 @@ private fun SimIcon(isEmbedded: Boolean) {
 @Composable
 fun phoneNumber(subInfo: SubscriptionInfo): State<String?> {
     val context = LocalContext.current
-    return remember(subInfo) {
+    val initialPhoneNumber = remember(subInfo.subscriptionId) {
+        try {
+            SubscriptionUtil.getBidiFormattedPhoneNumber(context, subInfo)
+        } catch (_: RuntimeException) {
+            null
+        }
+    }
+    return remember(subInfo.subscriptionId) {
         context.phoneNumberFlow(subInfo)
-    }.collectAsStateWithLifecycle(initialValue = null)
+    }.collectAsStateWithLifecycle(initialValue = initialPhoneNumber)
 }
 
 @Composable

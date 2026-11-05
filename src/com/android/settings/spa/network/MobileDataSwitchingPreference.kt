@@ -29,6 +29,7 @@ import kotlinx.coroutines.launch
 fun MobileDataSwitchingPreference(
     isMobileDataEnabled: () -> Boolean?,
     setMobileDataEnabled: (newEnabled: Boolean) -> Unit,
+    isChangeable: () -> Boolean = { true },
 ) {
     val mobileDataSummary = stringResource(id = R.string.mobile_data_settings_summary)
     val coroutineScope = rememberCoroutineScope()
@@ -42,7 +43,7 @@ fun MobileDataSwitchingPreference(
                     setMobileDataEnabled(newEnabled)
                 }
             }
-            override val changeable:() -> Boolean = {true}
+            override val changeable: () -> Boolean = isChangeable
         }
     )
 }
