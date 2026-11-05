@@ -37,6 +37,7 @@ import com.android.settings.R
 import com.android.settings.Utils
 import com.android.settings.network.SubscriptionUtil
 import com.android.settings.network.telephony.MobileNetworkUtils
+import com.android.settings.network.telephony.LegacySimPowerController
 import com.android.settings.network.telephony.SubscriptionActivationRepository
 import com.android.settings.network.telephony.SubscriptionRepository
 import com.android.settings.network.telephony.euicc.EuiccRepository
@@ -88,7 +89,11 @@ private fun SimPreference(subInfo: SubscriptionInfo) {
         model = object : SwitchPreferenceModel {
             override val title = subInfo.displayName.toString()
             override val summary = {
-                if (isConvertedPsim) {
+                val disabledSummary =
+                    LegacySimPowerController.getDisabledSummary(context, subInfo.subscriptionId)
+                if (disabledSummary != null) {
+                    disabledSummary
+                } else if (isConvertedPsim) {
                     context.getString(R.string.sim_category_converted_sim)
                 } else {
                     phoneNumber.value ?: ""
@@ -109,7 +114,13 @@ private fun SimPreference(subInfo: SubscriptionInfo) {
         restrictions = Restrictions(keys = listOf(UserManager.DISALLOW_CONFIG_MOBILE_NETWORKS)),
         primaryEnabled = { !isConvertedPsim },
     ) {
-        MobileNetworkUtils.launchMobileNetworkSettings(context, subInfo)
+        if (LegacySimPowerController.isDisabled(context, subInfo.subscriptionId)) {
+            coroutineScope.launch {
+                subscriptionActivationRepository.setActive(subInfo.subscriptionId, true)
+            }
+        } else {
+            MobileNetworkUtils.launchMobileNetworkSettings(context, subInfo)
+        }
     }
 }
 

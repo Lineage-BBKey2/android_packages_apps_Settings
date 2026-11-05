@@ -848,4 +848,8 @@
 
     <!-- Disable the Testing Setting Menu for user builds, i.e only display the menu on userdebug/eng builds -->
     <bool name="config_hide_testing_settings_menu_for_user_builds">false</bool>
+    <!-- Enable the per-slot power fallback only on device families tested with it. -->
+    <bool name="config_enable_legacy_sim_power_toggle" translatable="false">false</bool>
+    <!-- Recovery helper refuses to reactivate the earlier SIM-state integration. -->
+    <integer name="config_legacy_sim_power_state_version">2</integer>
 </resources>

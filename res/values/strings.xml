@@ -13924,4 +13924,12 @@
     <string name="search_gesture_feature_title">Circle to Search</string>
     <!-- Summary text for press and hold nav handle OR home button to invoke Circle to Search. [CHAR LIMIT=NONE] -->
     <string name="search_gesture_feature_summary">Touch and hold the Home button or the navigation handle to search using the content on your screen.</string>
+    <!-- Physical SIM power control on legacy radio implementations. -->
+    <string name="legacy_sim_power_disable_title">Turn off this SIM?</string>
+    <string name="legacy_sim_power_disable_message">Calls, texts and mobile data will be unavailable on this SIM until you turn it back on.</string>
+    <string name="legacy_sim_power_changing">Changing SIM state…</string>
+    <string name="legacy_sim_power_error_title">Couldn’t change SIM state</string>
+    <string name="legacy_sim_power_error_message">Wait for any calls to end and turn off airplane mode, then try again. If service does not return after turning the SIM on, restart your phone.</string>
+    <string name="legacy_sim_power_slot_off">SIM slot %1$d is off. Turn it on to check the inserted SIM.</string>
+    <string name="legacy_sim_power_slot_recovery">SIM slot %1$d needs recovery. Turn it on to restore service.</string>
 </resources>

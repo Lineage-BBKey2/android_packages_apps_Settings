@@ -1,0 +1,185 @@
+/*
+ * SPDX-License-Identifier: GPL-3.0-only
+ * Derived from iusmac/7SIM, 15.0-dev, commit d5f1b6de4f8d229ec8678d6d7e18431e789f8cd9.
+ * Settings adaptations: see third_party/sevensim/NOTICE and UPSTREAM-DIFF.patch.
+ */
+package com.github.iusmac.sevensim.telephony;
+
+import android.content.Context;
+import android.media.AudioManager;
+import android.provider.Settings;
+import android.telecom.ConnectionService;
+import android.telecom.TelecomManager;
+import android.telephony.SubscriptionManager;
+import android.telephony.TelephonyManager;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
+import com.github.iusmac.sevensim.Utils;
+
+import java.util.function.Supplier;
+
+public final class TelephonyUtils {
+    /** The minimum allowed length of the SIM PIN, as per 3GPP TS 31.101. */
+    private static final int PIN_MIN_PIN_LENGTH = 4;
+
+    /** The maximum allowed length of the SIM PIN, as per 3GPP TS 31.101. */
+    public static final int PIN_MAX_PIN_LENGTH = 8;
+
+    private final TelephonyManager mTelephonyManager;
+    private final SubscriptionManager mSubManager;
+    private final Supplier<TelecomManager> mTelecomManagerProvider;
+    private final Supplier<AudioManager> mAudioManagerProvider;
+    private final boolean mHasUiccSubscriptionToggleCapability;
+
+    TelephonyUtils(final TelephonyManager telephonyManager,
+            final SubscriptionManager subscriptionManager,
+            final Supplier<TelecomManager> telecomManagerProvider,
+            final Supplier<AudioManager> audioManagerProvider,
+            final boolean isUiccSubscriptionToggleCapabilityDisabled) {
+
+        mTelephonyManager = telephonyManager;
+        mSubManager = subscriptionManager;
+        mTelecomManagerProvider = telecomManagerProvider;
+        mAudioManagerProvider = audioManagerProvider;
+        mHasUiccSubscriptionToggleCapability =
+            hasUiccSubscriptionToggleCapability(isUiccSubscriptionToggleCapabilityDisabled);
+    }
+
+    /**
+     * Return a platform configuration for this device, indicating whether it has capability to
+     * disable / re-enable a subscription on a physical (non-eUICC) SIM, or aka non-programmable
+     * SIM.
+     *
+     * @param isUiccSubscriptionToggleCapabilityDisabled Whether to override device's ability to
+     * disable / re-enable a subscription on a pSIM, even if availability is configured by the
+     * platform.
+     */
+    private boolean hasUiccSubscriptionToggleCapability(
+            final boolean isUiccSubscriptionToggleCapabilityDisabled) {
+
+        if (isUiccSubscriptionToggleCapabilityDisabled) {
+            return false;
+        }
+
+        // Subscription toggling support was re-added in Android R
+        if (Utils.IS_AT_LEAST_R) {
+            return mSubManager.canDisablePhysicalSubscription();
+        }
+        return false;
+    }
+
+    /**
+     * Check whether this device can disable / re-enable a subscription on a physical (non-eUICC)
+     * SIM, or aka non-programmable SIM.
+     */
+    public boolean canDisableUiccSubscription() {
+        return mHasUiccSubscriptionToggleCapability;
+    }
+
+    /**
+     * <p>The total number of available SIM slots on the device.
+     *
+     * <p>More specifically, this number represents how many logical modems are currently configured
+     * to be active.
+     *
+     * <p>Possible values are:
+     * <ul>
+     * <li>0 when none of voice, SMS, data are not supported.</li>
+     * <li>1 for Single standby mode (Single SIM functionality).</li>
+     * <li>2 for Dual standby mode (Dual SIM functionality).</li>
+     * <li>3 for Tri standby mode (Tri SIM functionality).</li>
+     * </ul>
+     */
+    int getActiveSlotCount() {
+        if (Utils.IS_AT_LEAST_R) {
+            return mTelephonyManager.getActiveModemCount();
+        } else {
+            return ApiDeprecated.getPhoneCount(mTelephonyManager);
+        }
+    }
+
+    /** Card state can change before SubscriptionManager removes its old active record. */
+    boolean isSimCardUnavailable(final int slotIndex) {
+        final int state = mTelephonyManager.getSimState(slotIndex);
+        return state == TelephonyManager.SIM_STATE_ABSENT
+            || state == TelephonyManager.SIM_STATE_NOT_READY;
+    }
+
+    /**
+     * <p>Whether there's an ongoing phone call in progress.
+     *
+     * <p>Note that, this method relies on {@link TelecomManager#isInCall()} to supply an aggregate
+     * "in call" state for the entire device, but it may still resolve to {@code true} if any app is
+     * using voice communication; this is because {@link TelecomManager} doesn't handle the case
+     * where some apps don't implement {@link ConnectionService}.
+     */
+    public boolean isInCall() {
+        try {
+            return mTelecomManagerProvider.get().isInCall() || hasVoiceCall();
+        } catch (SecurityException ignored) {
+            return false;
+        }
+    }
+
+    /**
+     * Whether any app is using voice communication.
+     */
+    private boolean hasVoiceCall() {
+        try {
+            final int audioMode = mAudioManagerProvider.get().getMode();
+            return audioMode == AudioManager.MODE_IN_CALL
+                || audioMode == AudioManager.MODE_IN_COMMUNICATION;
+        } catch (Exception ignored) {
+            return false;
+        }
+    }
+
+    /**
+     * Convert SIM enabled state to its equivalent {@link SimState} code for internal usages.
+     */
+    static @SimState int simStateInt(final boolean enabled) {
+        return enabled ? SimState.ENABLED : SimState.DISABLED;
+    }
+
+    /**
+     * Get string representing a {@link SimState} code.
+     */
+    static @NonNull String simStateToString(final @SimState int simState) {
+        return switch (simState) {
+            case SimState.UNKNOWN -> "UNKNOWN";
+            case SimState.ENABLED -> "ENABLED";
+            case SimState.DISABLED -> "DISABLED";
+            default -> "UNKNOWN(" + simState + ")";
+        };
+    }
+
+    /**
+     * Return {@code true} if the "Airplane mode" is enabled, otherwise {@code false}.
+     *
+     * @param context The context to access content resolver.
+     */
+    static boolean isAirplaneModeOn(final Context context) {
+        return Settings.Global.getInt(context.getContentResolver(),
+                Settings.Global.AIRPLANE_MODE_ON, 0) != 0;
+    }
+
+    /**
+     * Return {@code true} if PIN string meets the UICC specs, otherwise {@code false}.
+     */
+    public static boolean isValidPin(final @Nullable String pin) {
+        final int len = pin != null ? pin.length() : 0;
+        return len >= PIN_MIN_PIN_LENGTH && len <= PIN_MAX_PIN_LENGTH;
+    }
+
+    /**
+     * Nested class to suppress warnings only for API methods annotated as Deprecated.
+     */
+    @SuppressWarnings("deprecation")
+    private static final class ApiDeprecated {
+        private static int getPhoneCount(final TelephonyManager telephony) {
+            return telephony.getPhoneCount();
+        }
+    }
+}
