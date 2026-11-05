@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="airplane_mode_enabled">Turn off airplane mode before turning on a SIM.</string>
+    <string name="sim_state_change_request_failed">SIM state request failed (code %1$d).</string>
+</resources>

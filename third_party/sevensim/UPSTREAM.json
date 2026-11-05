@@ -1,0 +1,59 @@
+{
+  "repository": "https://github.com/iusmac/7SIM",
+  "branch": "15.0-dev",
+  "commit": "d5f1b6de4f8d229ec8678d6d7e18431e789f8cd9",
+  "files": {
+    "AppDatabaseDE.java": {
+      "upstream_sha256": "fdd67587f52abd072afc6499cd839fbdb0b580053a2330400cbe22c4a35fe1d4",
+      "ported_sha256": "d222e580994005bab955b939cf0a23d9a79c3eddb82e4fbdaf3da325c87773b9"
+    },
+    "Logger.java": {
+      "upstream_sha256": "a7c92919a553bb148c100af8568589f236bc72dfb5272f4a00c04d7d8356c534",
+      "ported_sha256": "d42e479ca0dbc2efd5c2286544efab6bd2fa4aec08f2777727f583c989b496de"
+    },
+    "SysProp.java": {
+      "upstream_sha256": "5d0d85a76d9570a13f7427ca15a9dde70c4491138ab73dba57bf5f075aaf3e3a",
+      "ported_sha256": "370ddff6af235eb4013ef24056bc004c9b9f37fa4d523c0025d2ced35731d098"
+    },
+    "Utils.java": {
+      "upstream_sha256": "9d28d3454bb33b7d575354f0c296182eefb5dc28267c77a8a1116bc40f646545",
+      "ported_sha256": "feb52a7a48dbe9dccbd62d8095a0b7cc9a95bc057f37898038b19cfacffeddab"
+    },
+    "telephony/InvalidSubscriptionIdException.java": {
+      "upstream_sha256": "7ee20dddc15ed740298729be1f9794d7a1f2227332158f5d4def61312b9fe035",
+      "ported_sha256": "e120c3caa9a49dff6d576413f8ccfb32b44c76a54882cfedc2015bd2065b26dc"
+    },
+    "telephony/SimState.java": {
+      "upstream_sha256": "d531ed19637b430b2dc5696fb1ab4cb07d5e179d57c55b72b89cc79d4c5fc28a",
+      "ported_sha256": "5f67c4812f0e5ef44c5d1ae997fd6951d5641ba7ea64db4f9bb4e608f6f3777d"
+    },
+    "telephony/Subscription.java": {
+      "upstream_sha256": "51d0d31bd08e1caed8dacd159cdda53cd3bd6fdc8f9c390e64cc3ad6cf824903",
+      "ported_sha256": "a121a08289f65565adc817f3d1c6869ea1d7f22bc56f232038d72fd652c92463"
+    },
+    "telephony/SubscriptionList.java": {
+      "upstream_sha256": "f29f0225b8bb8df67b2713da81863383e202348f60e44d1910c0e17770341e5d",
+      "ported_sha256": "dde0be11728f4c9bd5345af2e33db797793af2db813a3ca5278a5c90fc2d80ea"
+    },
+    "telephony/Subscriptions.java": {
+      "upstream_sha256": "35d6b117016bd96e189a7542a23d573a366688608e58746c633376a23d426688",
+      "ported_sha256": "9277d8c4f68ee06b992cc6d0a359aad95c48f360d77bad66d04ac3bdd7dbd58b"
+    },
+    "telephony/SubscriptionsDao.java": {
+      "upstream_sha256": "121102837199eb69aa5b29f8223eaaa837b4aedcd9587262377136ddbf9802c7",
+      "ported_sha256": "e780ee294ec848a0f5ec94d814d1078cd6d19f2eaba9c36a09dedb01b37052f6"
+    },
+    "telephony/SubscriptionsImplLegacy.java": {
+      "upstream_sha256": "184153c56acbada7fccee3ed96bb055dcd9c4eaebff583ef355a9236f051fa60",
+      "ported_sha256": "92f04bd7668173fd3c7648b9221e8e3085d948ed70817bba546db00ab3860f67"
+    },
+    "telephony/TelephonyController.java": {
+      "upstream_sha256": "d69362dcdba92cc094922b3f0c3da603b6df2a624680a8c3dfd502ea91bba1e8",
+      "ported_sha256": "591bf13b3eaa2b72367531f85cfdfb8bc02af0a0901221143b7ee2fc6163e801"
+    },
+    "telephony/TelephonyUtils.java": {
+      "upstream_sha256": "b8f4d02a7c8c1576e273f46b6dd6d86bbb3e3dc73be59a5daf60dfbaa2449d96",
+      "ported_sha256": "c3aee6075c6a0fcbc63ec35313cb88c822c21992912e50130ab1dbe08dacb40d"
+    }
+  }
+}

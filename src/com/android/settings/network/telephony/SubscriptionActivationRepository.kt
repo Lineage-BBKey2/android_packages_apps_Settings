@@ -37,9 +37,10 @@ class SubscriptionActivationRepository(
 ) {
     fun isActivationChangeableFlow(): Flow<Boolean> = combine(
         callStateRepository.isInCallFlow(),
-        satelliteRepository.getIsSessionStartedFlow()
-    ) { isInCall, isSatelliteModemEnabled ->
-        !isInCall && !isSatelliteModemEnabled
+        satelliteRepository.getIsSessionStartedFlow(),
+        legacySimPowerChangeableFlow(context),
+    ) { isInCall, isSatelliteModemEnabled, legacyChangeable ->
+        !isInCall && !isSatelliteModemEnabled && legacyChangeable
     }
 
     /**
@@ -50,6 +51,10 @@ class SubscriptionActivationRepository(
     suspend fun setActive(subId: Int, active: Boolean) {
         if (!SubscriptionManager.isUsableSubscriptionId(subId)) {
             Log.i(TAG, "Unable to toggle subscription due to unusable subscription ID.")
+            return
+        }
+        if (LegacySimPowerController.canHandle(context, subId)) {
+            LegacySimPowerToggleActivity.launch(context, subId, active)
             return
         }
         if (!active && isEmergencyCallbackMode(subId)) {

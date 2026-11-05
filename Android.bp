@@ -66,6 +66,7 @@ android_library {
         "res-product",
     ],
     static_libs: [
+        "SettingsSevenSimLegacy",
         // External dependencies
         "androidx.navigation_navigation-fragment-ktx",
         "androidx.slice_slice-builders",

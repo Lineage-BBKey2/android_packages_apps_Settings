@@ -1,0 +1,27 @@
+package {
+    default_applicable_licenses: ["SettingsSevenSimLegacy_license"],
+}
+
+license {
+    name: "SettingsSevenSimLegacy_license",
+    visibility: [":__subpackages__"],
+    license_kinds: ["SPDX-license-identifier-GPL-3.0"],
+    license_text: ["LICENSE"],
+}
+
+android_library {
+    name: "SettingsSevenSimLegacy",
+    srcs: ["src/**/*.java"],
+    resource_dirs: ["res"],
+    manifest: "AndroidManifest.xml",
+    min_sdk_version: "35",
+    java_version: "17",
+    use_resource_processor: true,
+    static_libs: [
+        "androidx.annotation_annotation",
+        "androidx.core_core",
+        "androidx.room_room-runtime",
+    ],
+    libs: ["telephony-common"],
+    plugins: ["androidx.room_room-compiler-plugin"],
+}

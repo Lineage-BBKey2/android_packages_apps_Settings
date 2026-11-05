@@ -47,6 +47,7 @@ import androidx.annotation.VisibleForTesting;
 
 import com.android.internal.telephony.MccTable;
 import com.android.settings.R;
+import com.android.settings.network.telephony.LegacySimPowerController;
 import com.android.settings.flags.Flags;
 import com.android.settings.network.helper.SelectableSubscriptions;
 import com.android.settings.network.helper.SubscriptionAnnotation;
@@ -487,6 +488,11 @@ public class SubscriptionUtil {
         return subMgr.canDisablePhysicalSubscription();
     }
 
+    public static boolean showToggleForPhysicalSim(Context context) {
+        return context.getSystemService(SubscriptionManager.class).canDisablePhysicalSubscription()
+                || LegacySimPowerController.isSupported(context);
+    }
+
     /**
      * Get phoneId or logical slot index for a subId if active, or INVALID_PHONE_INDEX if inactive.
      */
@@ -522,6 +528,11 @@ public class SubscriptionUtil {
             Context context, int subId, boolean enable, boolean isNewTask) {
         if (!SubscriptionManager.isUsableSubscriptionId(subId)) {
             Log.i(TAG, "Unable to toggle subscription due to invalid subscription ID.");
+            return;
+        }
+        if (LegacySimPowerController.canHandle(context, subId)) {
+            com.android.settings.network.telephony.LegacySimPowerToggleActivity.launch(
+                    context, subId, enable);
             return;
         }
         if (enable && Flags.isDualSimOnboardingEnabled()) {

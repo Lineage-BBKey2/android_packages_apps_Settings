@@ -874,6 +874,31 @@
             </intent-filter>
       </activity>
 
+        <activity android:name=".network.telephony.LegacySimPowerToggleActivity"
+                  android:exported="false"
+                  android:configChanges="orientation|keyboard|keyboardHidden|screenSize|screenLayout|smallestScreenSize"
+                  android:theme="@style/Theme.AlertDialog.SimConfirmDialog" />
+
+        <receiver android:name=".network.telephony.LegacySimPowerReceiver"
+                  android:directBootAware="true"
+                  android:exported="true"
+                  android:permission="android.permission.MODIFY_PHONE_STATE">
+            <intent-filter>
+                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.AIRPLANE_MODE" />
+                <action android:name="android.telephony.action.SIM_CARD_STATE_CHANGED" />
+                <action android:name="android.telephony.action.SIM_APPLICATION_STATE_CHANGED" />
+                <action android:name="android.intent.action.SIM_STATE_CHANGED" />
+                <action android:name="android.intent.action.PHONE_STATE" />
+            </intent-filter>
+        </receiver>
+
+        <service android:name=".network.telephony.LegacySimPowerJobService"
+                 android:directBootAware="true"
+                 android:exported="true"
+                 android:permission="android.permission.BIND_JOB_SERVICE" />
+
         <activity android:name=".network.telephony.ToggleSubscriptionDialogActivity"
                   android:exported="false"
                   android:permission="android.permission.WRITE_EMBEDDED_SUBSCRIPTIONS"
