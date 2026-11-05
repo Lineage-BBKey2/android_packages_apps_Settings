@@ -46,6 +46,10 @@ public final class LegacySimPowerController {
     private final Handler mMain = new Handler(Looper.getMainLooper());
     private final ExecutorService mWorker = Executors.newSingleThreadExecutor();
     private final AtomicBoolean mBusy = new AtomicBoolean(true);
+    // Reconciliation also uses mBusy for serialization, even when no power change is needed.
+    // Do not make those read-only checks pulse the UI's changeable state.
+    private volatile boolean mUiBusy = true;
+    private volatile long mUiSettlingUntil;
     private final CopyOnWriteArraySet<Runnable> mListeners = new CopyOnWriteArraySet<>();
     private volatile List<Subscription> mSnapshot = Collections.emptyList();
 
@@ -61,7 +65,7 @@ public final class LegacySimPowerController {
         mWorker.execute(() -> {
             try { refresh(true); }
             catch (RuntimeException e) { Log.e(TAG, "Could not initialize 7SIM state", e); }
-            finally { mBusy.set(false); notifyChanged(); }
+            finally { mBusy.set(false); mUiBusy = false; notifyChanged(); }
         });
     }
 
@@ -104,6 +108,20 @@ public final class LegacySimPowerController {
     }
 
     public boolean isBusy() { return mBusy.get(); }
+    public boolean isUiBusy() { return mUiBusy; }
+    public boolean isInUiTransition() {
+        return mUiBusy || SystemClock.elapsedRealtime() < mUiSettlingUntil;
+    }
+
+    private void beginUiChange() {
+        mUiBusy = true;
+        notifyChanged();
+    }
+
+    private void endUiChange() {
+        if (mUiBusy) mUiSettlingUntil = SystemClock.elapsedRealtime() + 5_000;
+        mUiBusy = false;
+    }
     public void addListener(Runnable listener) { mListeners.add(listener); }
     public void removeListener(Runnable listener) { mListeners.remove(listener); }
 
@@ -171,6 +189,7 @@ public final class LegacySimPowerController {
     }
 
     private boolean change(Subscription sub, boolean enabled) throws InterruptedException {
+        beginUiChange();
         boolean accepted = mBackend.setEnabled(sub.getSlotIndex(), enabled, !enabled);
         if (accepted && enabled) {
             mBackend.clearDisabledIntent(sub);
@@ -202,6 +221,7 @@ public final class LegacySimPowerController {
             mMain.post(() -> callback.onComplete(false));
             return;
         }
+        mUiBusy = true;
         notifyChanged();
         mWorker.execute(() -> {
             boolean success = false;
@@ -235,6 +255,7 @@ public final class LegacySimPowerController {
             } finally {
                 try { refresh(false); }
                 catch (RuntimeException e) { Log.e(TAG, "Could not refresh 7SIM state", e); }
+                endUiChange();
                 mBusy.set(false);
                 notifyChanged();
             }
@@ -259,7 +280,6 @@ public final class LegacySimPowerController {
             try {
                 if (!isSupported(mContext) || !mBusy.compareAndSet(false, true)) return;
                 acquired = true;
-                notifyChanged();
                 if (radioChangesBlocked()) return;
                 refresh(false);
                 for (Subscription sub : mSnapshot) {
@@ -275,7 +295,7 @@ public final class LegacySimPowerController {
             } catch (Exception e) {
                 Log.e(TAG, "Could not reconcile 7SIM state", e);
             } finally {
-                if (acquired) { mBusy.set(false); notifyChanged(); }
+                if (acquired) { endUiChange(); mBusy.set(false); notifyChanged(); }
                 mMain.post(finished);
             }
         });

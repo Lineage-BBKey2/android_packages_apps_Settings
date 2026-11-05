@@ -8,6 +8,7 @@ import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOf
 
 internal fun legacySimPowerChanges(context: Context): Flow<Unit> {
@@ -27,6 +28,6 @@ internal fun legacySimPowerChangeableFlow(context: Context): Flow<Boolean> {
         legacySimPowerChanges(context),
         context.settingsGlobalBooleanFlow(Settings.Global.AIRPLANE_MODE_ON),
     ) { _, airplaneMode ->
-        !airplaneMode && !LegacySimPowerController.get(context).isBusy
-    }
+        !airplaneMode && !LegacySimPowerController.get(context).isUiBusy
+    }.distinctUntilChanged()
 }
