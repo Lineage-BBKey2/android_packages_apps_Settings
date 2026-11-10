@@ -21,6 +21,7 @@ import static com.android.internal.jank.InteractionJankMonitor.CUJ_SETTINGS_SLID
 import android.content.ContentResolver;
 import android.content.Context;
 import android.media.AudioManager;
+import android.media.CallVolumeSliderRange;
 import android.net.Uri;
 import android.preference.SeekBarVolumizer;
 import android.text.TextUtils;
@@ -99,11 +100,22 @@ public class VolumeSeekBarPreference extends SeekBarPreference {
 
     public void setStream(int stream) {
         mStream = stream;
-        setMax(mAudioManager.getStreamMaxVolume(mStream));
-        // Use getStreamMinVolumeInt for non-public stream type
-        // eg: AudioManager.STREAM_BLUETOOTH_SCO
-        setMin(mAudioManager.getStreamMinVolumeInt(mStream));
-        setProgress(mAudioManager.getStreamVolume(mStream));
+        final CallVolumeSliderRange range = CallVolumeSliderRange.forStream(mAudioManager, mStream);
+        setMax(range.displayMax);
+        setMin(range.displayMin);
+        setProgress(range.toDisplay(mAudioManager.getStreamVolume(mStream)));
+    }
+
+    @Override
+    public int getMax() {
+        return mStream == AudioManager.STREAM_VOICE_CALL && mSeekBar != null
+                ? mSeekBar.getMax() : super.getMax();
+    }
+
+    @Override
+    public int getMin() {
+        return mStream == AudioManager.STREAM_VOICE_CALL && mSeekBar != null
+                ? mSeekBar.getMin() : super.getMin();
     }
 
     public void setCallback(Callback callback) {
@@ -157,7 +169,8 @@ public class VolumeSeekBarPreference extends SeekBarPreference {
                 if (mCallback != null) {
                     mCallback.onStreamValueChanged(mStream, progress);
                 }
-                overrideSeekBarStateDescription(formatStateDescription(progress));
+                // The callback retains SDK units; accessibility describes the visible slider.
+                overrideSeekBarStateDescription(formatStateDescription(seekBar.getProgress()));
             }
             @Override
             public void onMuted(boolean muted, boolean zenMuted) {
