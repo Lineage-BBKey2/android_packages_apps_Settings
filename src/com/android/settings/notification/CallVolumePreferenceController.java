@@ -18,6 +18,7 @@ package com.android.settings.notification;
 
 import android.content.Context;
 import android.media.AudioManager;
+import android.media.CallVolumeSliderRange;
 import android.text.TextUtils;
 
 import com.android.settings.R;
@@ -59,6 +60,31 @@ public class CallVolumePreferenceController extends VolumeSeekBarPreferenceContr
             return AudioManager.STREAM_BLUETOOTH_SCO;
         }
         return AudioManager.STREAM_VOICE_CALL;
+    }
+
+    @Override
+    public int getSliderPosition() {
+        final int stream = getAudioStream();
+        return CallVolumeSliderRange.forStream(mAudioManager, stream)
+                .toDisplay(mHelper.getStreamVolume(stream));
+    }
+
+    @Override
+    public boolean setSliderPosition(int position) {
+        final int stream = getAudioStream();
+        final CallVolumeSliderRange range = CallVolumeSliderRange.forStream(mAudioManager, stream);
+        if (mPreference != null) mPreference.setProgress(position);
+        return mHelper.setStreamVolume(stream, range.toFramework(position));
+    }
+
+    @Override
+    public int getMax() {
+        return CallVolumeSliderRange.forStream(mAudioManager, getAudioStream()).displayMax;
+    }
+
+    @Override
+    public int getMin() {
+        return CallVolumeSliderRange.forStream(mAudioManager, getAudioStream()).displayMin;
     }
 
     @Override
