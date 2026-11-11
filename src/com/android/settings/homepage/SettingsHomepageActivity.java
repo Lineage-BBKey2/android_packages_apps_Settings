@@ -41,13 +41,17 @@ import android.text.TextUtils;
 import android.util.ArraySet;
 import android.util.FeatureFlagUtils;
 import android.util.Log;
+import android.view.KeyCharacterMap;
+import android.view.KeyEvent;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
+import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.Toolbar;
 
+import androidx.annotation.Nullable;
 import androidx.annotation.VisibleForTesting;
 import androidx.core.graphics.Insets;
 import androidx.core.util.Consumer;
@@ -403,6 +407,39 @@ public class SettingsHomepageActivity extends FragmentActivity implements
                     // passed down to descendant views.
                     return WindowInsetsCompat.CONSUMED;
                 });
+    }
+
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        final String query = getTypeToSearchQuery(event);
+        if (query != null && FeatureFactory.getFeatureFactory().getSearchFeatureProvider()
+                .startSearchWithQuery(this, SettingsEnums.SETTINGS_HOMEPAGE, query)) {
+            return true;
+        }
+        return super.onKeyDown(keyCode, event);
+    }
+
+    @Nullable
+    private String getTypeToSearchQuery(KeyEvent event) {
+        if (event.isCtrlPressed() || event.isMetaPressed() || event.getRepeatCount() != 0) {
+            return null;
+        }
+        final View focus = getCurrentFocus();
+        if (focus instanceof EditText || (focus != null && focus.onCheckIsTextEditor())) {
+            return null;
+        }
+        // Alt supplies digits on the physical keyboard; let its key map resolve the character.
+        // Leave dead keys to normal handling instead of turning their accent flag into text.
+        final int codePoint = event.getUnicodeChar();
+        if ((codePoint & KeyCharacterMap.COMBINING_ACCENT) != 0
+                || !Character.isValidCodePoint(codePoint) || codePoint == 0
+                || (codePoint >= Character.MIN_SURROGATE
+                        && codePoint <= Character.MAX_SURROGATE)
+                || Character.isISOControl(codePoint) || Character.isWhitespace(codePoint)
+                || Character.isSpaceChar(codePoint)) {
+            return null;
+        }
+        return new String(Character.toChars(codePoint));
     }
 
     private void initSearchBarView() {

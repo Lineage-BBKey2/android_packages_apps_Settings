@@ -19,6 +19,8 @@ package com.android.settings.search;
 import static android.view.View.IMPORTANT_FOR_ACCESSIBILITY_NO;
 
 import android.app.ActivityOptions;
+import android.app.SearchManager;
+import android.content.ActivityNotFoundException;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -109,13 +111,52 @@ public interface SearchFeatureProvider {
         }
 
         final Context context = activity.getApplicationContext();
+        final Intent intent = prepareSearchIntent(activity, pageId);
+        if (intent == null) {
+            return;
+        }
+
+        toolbar.setOnClickListener(tb -> startSearchActivity(context, activity, pageId, intent));
+
+        toolbar.setHandwritingDelegatorCallback(
+                () -> startSearchActivity(context, activity, pageId, intent));
+        toolbar.setAllowedHandwritingDelegatePackage(intent.getPackage());
+    }
+
+    /** Launch search with a typed character, using the normal toolbar launch behavior. */
+    default boolean startSearchWithQuery(@NonNull FragmentActivity activity, int pageId,
+            @NonNull String query) {
+        if (!WizardManagerHelper.isDeviceProvisioned(activity)
+                || !Utils.isPackageEnabled(activity, getSettingsIntelligencePkgName(activity))
+                || WizardManagerHelper.isAnySetupWizard(activity.getIntent())) {
+            return false;
+        }
+        final Intent intent = prepareSearchIntent(activity, pageId);
+        if (intent == null) {
+            return false;
+        }
+        intent.putExtra(SearchManager.QUERY, query);
+        try {
+            // Scene transitions pause and drop key events while search is opening.
+            startSearchActivity(activity.getApplicationContext(), activity, pageId, intent,
+                    false /* useSceneTransition */);
+            return true;
+        } catch (ActivityNotFoundException e) {
+            // The backend may have disappeared after resolution. Do not consume the key.
+            return false;
+        }
+    }
+
+    @Nullable
+    private Intent prepareSearchIntent(@NonNull FragmentActivity activity, int pageId) {
+        final Context context = activity.getApplicationContext();
         final Intent intent = buildSearchIntent(context, pageId)
                 .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
         final List<ResolveInfo> resolveInfos =
                 activity.getPackageManager().queryIntentActivities(intent,
                         PackageManager.MATCH_DEFAULT_ONLY);
         if (resolveInfos.isEmpty()) {
-            return;
+            return null;
         }
 
         final ComponentName searchComponentName = resolveInfos.get(0)
@@ -131,23 +172,26 @@ public interface SearchFeatureProvider {
                 true /* finishSecondaryWithPrimary */,
                 false /* clearTop */);
 
-        toolbar.setOnClickListener(tb -> startSearchActivity(context, activity, pageId, intent));
-
-        toolbar.setHandwritingDelegatorCallback(
-                () -> startSearchActivity(context, activity, pageId, intent));
-        toolbar.setAllowedHandwritingDelegatePackage(intent.getPackage());
+        return intent;
     }
 
     /** Start the search activity. */
     private static void startSearchActivity(
             Context context, FragmentActivity activity, int pageId, Intent intent) {
+        startSearchActivity(context, activity, pageId, intent, true /* useSceneTransition */);
+    }
+
+    private static void startSearchActivity(Context context, FragmentActivity activity, int pageId,
+            Intent intent, boolean useSceneTransition) {
         FeatureFactory.getFeatureFactory().getSlicesFeatureProvider()
                 .indexSliceDataAsync(context);
 
         FeatureFactory.getFeatureFactory().getMetricsFeatureProvider()
                 .logSettingsTileClick(KEY_HOMEPAGE_SEARCH_BAR, pageId);
 
-        final Bundle bundle = ActivityOptions.makeSceneTransitionAnimation(activity).toBundle();
+        final Bundle bundle = useSceneTransition
+                ? ActivityOptions.makeSceneTransitionAnimation(activity).toBundle()
+                : ActivityOptions.makeCustomAnimation(context, 0, 0).toBundle();
         activity.startActivity(intent, bundle);
     }
 
