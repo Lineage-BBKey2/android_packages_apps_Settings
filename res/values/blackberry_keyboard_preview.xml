@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="blackberry_keyboard_preview_letters">Letters</string>
+    <string name="blackberry_keyboard_preview_shift">Shift</string>
+    <string name="blackberry_keyboard_preview_alt">Alt</string>
+    <string name="blackberry_keyboard_preview_sym">Sym</string>
+    <string name="blackberry_keyboard_preview_title">%1$s · %2$s\nTap the preview to change the key layer</string>
+    <string name="blackberry_keyboard_preview_description">%1$s, %2$s. Activate to change the key layer.</string>
+</resources>

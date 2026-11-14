@@ -55,9 +55,23 @@ public class NewKeyboardLayoutPickerFragment extends Fragment {
                     if (mInputManager != null
                             && mKeyboardLayoutPreview != null
                             && mKeyboardLayoutPreviewText != null && keyboardLayout != null) {
-                        Drawable previewDrawable = mInputManager.getKeyboardLayoutPreview(
-                                keyboardLayout,
-                                DEFAULT_KEYBOARD_PREVIEW_WIDTH, DEFAULT_KEYBOARD_PREVIEW_HEIGHT);
+                        String family = BlackBerryKeyboardPreview.familyFor(
+                                mInputManager, getArguments());
+                        Drawable previewDrawable;
+                        if (family == null) {
+                            previewDrawable = mInputManager.getKeyboardLayoutPreview(
+                                    keyboardLayout, DEFAULT_KEYBOARD_PREVIEW_WIDTH,
+                                    DEFAULT_KEYBOARD_PREVIEW_HEIGHT);
+                        } else {
+                            BlackBerryKeyboardPreview data = BlackBerryKeyboardPreview.load(
+                                    requireContext(), keyboardLayout, family);
+                            previewDrawable = data == null ? null
+                                    : new BlackBerryKeyboardPreviewDrawable(requireContext(), data);
+                        }
+                        mKeyboardLayoutPreview.setOnClickListener(null);
+                        mKeyboardLayoutPreview.setClickable(false);
+                        mKeyboardLayoutPreview.setFocusable(false);
+                        mKeyboardLayoutPreview.setContentDescription(keyboardLayout.getLabel());
                         mKeyboardLayoutPreview.setVisibility(
                                 previewDrawable == null ? GONE : VISIBLE);
                         mKeyboardLayoutPreviewText.setVisibility(
@@ -65,6 +79,15 @@ public class NewKeyboardLayoutPickerFragment extends Fragment {
                         if (previewDrawable != null) {
                             mKeyboardLayoutPreviewText.setText(keyboardLayout.getLabel());
                             mKeyboardLayoutPreview.setImageDrawable(previewDrawable);
+                            if (previewDrawable instanceof BlackBerryKeyboardPreviewDrawable) {
+                                BlackBerryKeyboardPreviewDrawable compact =
+                                        (BlackBerryKeyboardPreviewDrawable) previewDrawable;
+                                updateBlackBerryPreviewLabel(keyboardLayout, 0);
+                                mKeyboardLayoutPreview.setFocusable(true);
+                                mKeyboardLayoutPreview.setOnClickListener(view ->
+                                        updateBlackBerryPreviewLabel(
+                                                keyboardLayout, compact.nextLayer()));
+                            }
                         }
                     }
                 }
@@ -103,6 +126,18 @@ public class NewKeyboardLayoutPickerFragment extends Fragment {
                 .replace(R.id.keyboard_layouts, fragment)
                 .commit();
         return fragmentView;
+    }
+
+    private void updateBlackBerryPreviewLabel(KeyboardLayout layout, int layer) {
+        int[] names = {R.string.blackberry_keyboard_preview_letters,
+                R.string.blackberry_keyboard_preview_shift,
+                R.string.blackberry_keyboard_preview_alt,
+                R.string.blackberry_keyboard_preview_sym};
+        String name = getString(names[layer]);
+        mKeyboardLayoutPreviewText.setText(getString(
+                R.string.blackberry_keyboard_preview_title, layout.getLabel(), name));
+        mKeyboardLayoutPreview.setContentDescription(getString(
+                R.string.blackberry_keyboard_preview_description, layout.getLabel(), name));
     }
 
     private int getPickerLayout(Configuration configuration) {

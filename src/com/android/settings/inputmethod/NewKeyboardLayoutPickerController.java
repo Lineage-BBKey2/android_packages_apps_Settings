@@ -177,12 +177,16 @@ public class NewKeyboardLayoutPickerController extends BasePreferenceController 
         if (mKeyboardLayouts == null) {
             return;
         }
+        KeyboardLayoutSelectionResult result = InputPeripheralsSettingsUtils.getKeyboardLayout(
+                mIm, mUserId, mInputDeviceIdentifier, mInputMethodInfo, mInputMethodSubtype);
+        String selectedDescriptor = result == null ? null : result.getLayoutDescriptor();
+        mPreviousSelection = null;
         for (KeyboardLayout layout : mKeyboardLayouts) {
             final TickButtonPreference pref;
             pref = new TickButtonPreference(mScreen.getContext());
             pref.setTitle(layout.getLabel());
 
-            if (mLayout.equals(layout.getLabel())) {
+            if (layout.getDescriptor().equals(selectedDescriptor)) {
                 if (mKeyboardLayoutSelectedCallback != null) {
                     mKeyboardLayoutSelectedCallback.onSelected(layout);
                 }
