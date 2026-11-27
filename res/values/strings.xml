@@ -13932,4 +13932,6 @@
     <string name="legacy_sim_power_error_message">Wait for any calls to end and turn off airplane mode, then try again. If service does not return after turning the SIM on, restart your phone.</string>
     <string name="legacy_sim_power_slot_off">SIM slot %1$d is off. Turn it on to check the inserted SIM.</string>
     <string name="legacy_sim_power_slot_recovery">SIM slot %1$d needs recovery. Turn it on to restore service.</string>
+    <!-- BlackBerry category in Settings/Apps. -->
+    <string name="category_name_blackberry">BlackBerry</string>
 </resources>

@@ -134,4 +134,11 @@
         </Preference>
     </PreferenceCategory>
 
+    <PreferenceCategory
+        android:key="blackberry_category"
+        android:title="@string/category_name_blackberry"
+        android:order="30"
+        android:visibility="gone"
+        settings:searchable="true"/>
+
 </PreferenceScreen>
